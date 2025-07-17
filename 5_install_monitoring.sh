@@ -3,8 +3,6 @@
 # Скрипт для установки и настройки мониторинга
 # Работает из директории /home/vboxuser
 
-# Переходим в домашнюю директорию пользователя vboxuser
-cd /home/vboxuser || { echo "Ошибка: не удалось перейти в /home/vboxuser"; exit 1; }
 
 # 2. Делаем скрипты исполняемыми
 chmod +x install_node_exporter.sh
