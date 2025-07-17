@@ -165,7 +165,7 @@ ssh_exec "mysql -uroot -e \"CHANGE MASTER TO
   MASTER_LOG_FILE='$LOG_FILE',
   MASTER_LOG_POS=$LOG_POS;\""
 
-ssh_exec "mysql -uroot -e \"START SLAVE;"" || {
+ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
   echo "ОШИБКА: Не удалось запустить репликацию" >&2
   exit 1
 }
