@@ -14,8 +14,8 @@ chmod +x 8_restore_db_master.sh
 echo "Запуск установки nginx, apache2."
 ./2_install.sh
 
-echo "Запуск установки iptables"
-./3_setup_iptables.sh
+#echo "Запуск установки iptables"
+#./3_setup_iptables.sh
 
 # раскомментировать при аварином восстановлении
 # echo "Установка свежего бекапа"
