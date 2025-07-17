@@ -7,7 +7,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Директория с пакетами
-PKG_DIR="/home/vboxuser"
+PKG_DIR="/home/odmin/elk"
 
 # Установка Elasticsearch
 echo "🔵 Установка Elasticsearch..."
