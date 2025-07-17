@@ -7,8 +7,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Обновление системы
-apt update && apt upgrade -y
-apt install mc
+#apt update && apt upgrade -y
+#apt install mc
 
 # Установка компонентов
 apt install -y nginx apache2 mysql-server php libapache2-mod-php php-mysql
