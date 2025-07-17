@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # Конфигурационные параметры
-MASTER_IP="192.168.1.100"
-SLAVE_IP="192.168.1.101"
+MASTER_IP="192.168.33.245"
+SLAVE_IP="192.168.33.246"
 SLAVE_SSH_USER="root"
 SLAVE_SSH_PASS="111111"
 MYSQL_ROOT_PASS="Testpass1$"
 REPL_USER="replicator"
 REPL_PASS="strong_repl_password"
 DB_NAME="Otus_test"
-GIT_REPO="https://[personal access token]@github.com/otus20250412/otus.git"
+GIT_REPO="https://github.com/Edd13Garc1a/Otus.git"
 BACKUP_DIR="/tmp/mysql_backup"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}_${TIMESTAMP}.sql"
@@ -29,8 +29,8 @@ check_error() {
     fi
 }
 
-execute_on_slave "git config --global user.email 'P_A_V_L_I_K@mail.ru'"
-execute_on_slave "git config --global user.name 'Miskevich Pavel'"
+execute_on_slave "git config --global user.email 'Eddie.it.mt@gmail.com'"
+execute_on_slave "git config --global user.name 'Edd13Garc1a'"
 
 echo "1. Останавливаем репликацию на слейве"
 execute_on_slave "mysql -u root -p'${MYSQL_ROOT_PASS}' -e 'STOP SLAVE;'"
