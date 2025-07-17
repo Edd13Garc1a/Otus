@@ -117,5 +117,3 @@ echo "🌐 Kibana доступна по адресу: http://<ваш_IP>:5601"
 echo "📊 Готовые дашборды для Nginx:"
 echo "  1. Откройте Kibana → Analytics → Dashboard"
 echo "  2. Найдите '[Filebeat Nginx] Access and error logs'"
-
-apt-get moo
