@@ -7,8 +7,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # Конфигурация (ЗАПОЛНИТЕ ЭТИ ДАННЫЕ ПЕРЕД ЗАПУСКОМ!)
-MASTER_IP="192.168.1.100"
-SLAVE_IP="192.168.1.101"
+MASTER_IP="192.168.33.245"
+SLAVE_IP="192.168.33.246"
 SLAVE_SSH_PASS="111111"      # Пароль root для SSH на слейве
 MYSQL_ROOT_PASS="Testpass1$" # Пароль root MySQL
 REPL_USER="replicator"
