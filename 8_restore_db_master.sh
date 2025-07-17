@@ -2,8 +2,8 @@
 
 # Конфигурационные параметры
 MYSQL_ROOT_PASS="Testpass1$"  # Пароль root MySQL
-GIT_REPO="https://[personal access token]@github.com/otus20250412/otus.git"
-LOCAL_WORK_DIR="/home/vboxuser"
+GIT_REPO="https://github.com/Edd13Garc1a/Otus.git"
+LOCAL_WORK_DIR="/home/odmin"
 GIT_CLONE_DIR="$LOCAL_WORK_DIR/repo"
 EXTRACT_DIR="$LOCAL_WORK_DIR/extracted"
 
@@ -26,7 +26,7 @@ echo "1. Подготовка рабочей директории"
 sudo mkdir -p "$LOCAL_WORK_DIR"
 check_error "Не удалось подготовить рабочую директорию"
 #sudo chown -R $(whoami):$(whoami) "$LOCAL_WORK_DIR"
-sudo chown -R vboxuser:vboxuser /home/vboxuser/
+sudo chown -R odmin:odmin /home/odmin/
 
 echo "2. Клонирование репозитория с бекапами"
 sudo rm -rf "$GIT_CLONE_DIR"
