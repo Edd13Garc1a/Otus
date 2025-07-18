@@ -167,7 +167,7 @@ ssh_exec "mysql -uroot -e \"CHANGE MASTER TO
   MASTER_LOG_POS=$LOG_POS;\""
 
 echo "Ждем поднятия базы..."
-sleep 10
+sleep 5
 ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
 		
   echo "ОШИБКА: Не удалось запустить репликацию" >&2
