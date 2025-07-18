@@ -184,4 +184,9 @@ echo -e "\n=== НАСТРОЙКА ЗАВЕРШЕНА ==="
 echo "Мастер: $MASTER_IP"
 echo "Слейв: $SLAVE_IP"
 echo "Пользователь репликации: $REPL_USER"
-echo "Тестовая БД: $DB_NAME"        
+echo "Тестовая БД: $DB_NAME"
+ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
+		
+  echo "ОШИБКА: Не удалось запустить репликацию" >&2
+  exit 1
+}
