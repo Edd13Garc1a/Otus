@@ -1,96 +1,70 @@
 #!/bin/bash
 
-# Конфигурационные параметры
-MYSQL_ROOT_PASS="Testpass1$"  # Пароль root MySQL
-GIT_REPO="https://github.com/Edd13Garc1a/Otus.git"
-LOCAL_WORK_DIR="/home/odmin"
-GIT_CLONE_DIR="$LOCAL_WORK_DIR/repo"
-EXTRACT_DIR="$LOCAL_WORK_DIR/extracted"
+# === НАСТРОЙКИ ===
+GITHUB_REPO="git@github.com:Edd13Garc1a/Otus.git"
+WORK_DIR="/home/odmin/mysql_restore_work"
+EXTRACT_DIR="$WORK_DIR/extracted"
+DB_NAME="Otus_test"
+MYSQL_ROOT_PASS="Testpass1$"
 
-# Функция для проверки ошибок
-check_error() {
-    if [ $? -ne 0 ]; then
-        echo "Ошибка: $1"
-        exit 1
-    fi
-}
+# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+info()    { echo -e "\e[34mℹ️  $1\e[0m"; }
+success() { echo -e "\e[32m✅ $1\e[0m"; }
+error()   { echo -e "\e[31m❌ $1\e[0m"; }
 
-echo "=============================================="
+# === 1. Подготовка ===
+echo -e "\n=============================================="
 echo "Скрипт восстановления MySQL из бекапа в GitHub"
 echo "Выполняется на сервере: $(hostname)"
 echo "IP адрес: $(hostname -I | awk '{print $1}')"
 echo "=============================================="
 
-echo "1. Подготовка рабочей директории"
-#sudo rm -rf "$LOCAL_WORK_DIR"
-sudo mkdir -p "$LOCAL_WORK_DIR"
-check_error "Не удалось подготовить рабочую директорию"
-#sudo chown -R $(whoami):$(whoami) "$LOCAL_WORK_DIR"
-sudo chown -R odmin:odmin /home/odmin/
-
-echo "2. Клонирование репозитория с бекапами"
-sudo rm -rf "$GIT_CLONE_DIR"
-git clone "$GIT_REPO" "$GIT_CLONE_DIR"
-check_error "Не удалось клонировать репозиторий"
-
-echo "3. Поиск последнего бекапа"
-LATEST_BACKUP=$(ls -tr "$GIT_CLONE_DIR"/*.tar.gz | head -n 1)
-check_error "Не удалось найти бекапы в репозитории"
-
-if [ -z "$LATEST_BACKUP" ]; then
-    echo "Ошибка: не найдены файлы бекапов в репозитории"
-    exit 1
-fi
-
-echo "Найден последний бекап: $LATEST_BACKUP"
-
-echo "4. Извлечение бекапа из архива"
+info "1. Подготовка рабочей директории: $WORK_DIR"
+rm -rf "$WORK_DIR"
 mkdir -p "$EXTRACT_DIR"
-tar -xzvf "$LATEST_BACKUP" -C "$EXTRACT_DIR"
-check_error "Не удалось извлечь бекап из архива"
 
-BACKUP_SQL=$(find "$EXTRACT_DIR" -name "*.sql" | sort -r | head -n 1)
-check_error "Не удалось найти SQL файл в архиве"
+# === 2. Клонирование репозитория ===
+info "2. Клонирование репозитория: $GITHUB_REPO"
+git clone "$GITHUB_REPO" "$WORK_DIR/repo" || { error "Не удалось клонировать репозиторий"; exit 1; }
 
-if [ -z "$BACKUP_SQL" ]; then
-    echo "Ошибка: не найден SQL файл в распакованном архиве"
+# === 3. Поиск последнего бэкапа ===
+info "3. Поиск последнего бэкапа"
+LATEST_BACKUP=$(find "$WORK_DIR/repo" -name "${DB_NAME}_*.sql.tar.gz" | sort | tail -n 1)
+if [[ -z "$LATEST_BACKUP" ]]; then
+    error "Не найден файл бэкапа для $DB_NAME"
     exit 1
 fi
+success "Найден бэкап: $LATEST_BACKUP"
 
-echo "Найден SQL файл: $BACKUP_SQL"
+# === 4. Извлечение бэкапа ===
+info "4. Извлечение бэкапа"
+tar -xzf "$LATEST_BACKUP" -C "$EXTRACT_DIR" || { error "Не удалось распаковать архив"; exit 1; }
 
-echo "5. Восстановление базы данных из бекапа"
-#echo "Удаление существующей базы данных (если есть)"
-#mysql -u root -p"${MYSQL_ROOT_PASS}" -e "DROP DATABASE IF EXISTS Otus_test;"
-#check_error "Не удалось удалить существующую базу данных"
+SQL_FILE=$(find "$EXTRACT_DIR" -name "${DB_NAME}_*.sql" | head -n 1)
+if [[ ! -f "$SQL_FILE" ]]; then
+    error "SQL-файл не найден после распаковки"
+    exit 1
+fi
+success "Найден SQL-файл: $SQL_FILE"
 
-echo "Создание новой базы данных, если надо"
-mysql -u root -p"${MYSQL_ROOT_PASS}" -e "CREATE DATABASE IF NOT EXISTS Otus_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-check_error "Не удалось создать новую базу данных"
+# === 5. Восстановление базы данных ===
+info "5. Восстановление базы данных"
+mysql -u root -p"$MYSQL_ROOT_PASS" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;" || { error "Не удалось создать базу данных"; exit 1; }
+mysql -u root -p"$MYSQL_ROOT_PASS" "$DB_NAME" < "$SQL_FILE" || { error "Ошибка при импорте SQL-файла"; exit 1; }
+success "Импорт SQL завершён"
 
-echo "Импорт данных из бекапа"
-mysql -u root -p"${MYSQL_ROOT_PASS}" Otus_test < "$BACKUP_SQL"
-check_error "Не удалось восстановить базу данных из бекапа"
+# === 6. Проверка восстановления ===
+info "6. Проверка восстановления"
+TABLE_COUNT=$(mysql -u root -p"$MYSQL_ROOT_PASS" -sN -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '$DB_NAME';")
 
-echo "6. Проверка восстановленной базы данных"
-DB_CHECK=$(mysql -u root -p"${MYSQL_ROOT_PASS}" -e "SHOW DATABASES LIKE 'Otus_test';" | grep -o Otus_test)
-check_error "Не удалось проверить восстановленную базу данных"
-
-TABLE_COUNT=$(mysql -u root -p"${MYSQL_ROOT_PASS}" Otus_test -e "SHOW TABLES;" | wc -l)
-check_error "Не удалось проверить таблицы в восстановленной базе"
-
-if [ "$DB_CHECK" == "Otus_test" ] && [ "$TABLE_COUNT" -gt 0 ]; then
-    echo "База данных Otus_test успешно восстановлена!"
-    echo "Количество таблиц в базе: $((TABLE_COUNT-1))"
+if [[ -z "$TABLE_COUNT" ]]; then
+    error "Не удалось получить количество таблиц в базе $DB_NAME"
+    exit 1
+elif [[ "$TABLE_COUNT" -eq 0 ]]; then
+    error "База данных $DB_NAME не содержит таблиц"
+    exit 1
 else
-    echo "Ошибка: база данных Otus_test не была восстановлена или не содержит таблиц"
-    exit 1
+    success "База данных $DB_NAME успешно восстановлена: $TABLE_COUNT таблиц"
 fi
 
-echo "7. Очистка временных файлов"
-sudo rm -rf "$LOCAL_WORK_DIR"
-check_error "Не удалось очистить временные файлы"
-
-echo "=============================================="
-echo "Восстановление из бекапа успешно завершено!"
-echo "=============================================="
+echo -e "\n🎉 \e[1;32mВосстановление завершено успешно!\e[0m"
