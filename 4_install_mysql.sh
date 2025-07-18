@@ -6,7 +6,7 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-# Конфигурация (ЗАПОЛНИТЕ ЭТИ ДАННЫЕ ПЕРЕД ЗАПУСКОМ!)
+# Конфигурация
 MASTER_IP="192.168.33.245"
 SLAVE_IP="192.168.33.246"
 SLAVE_SSH_PASS="111111"      # Пароль root для SSH на слейве
@@ -74,14 +74,17 @@ mysql_exec "GRANT REPLICATION SLAVE ON *.* TO '$REPL_USER'@'$SLAVE_IP';"
 mysql_exec "ALTER USER '$REPL_USER'@'$SLAVE_IP' IDENTIFIED WITH mysql_native_password BY '$REPL_PASS';"
 mysql_exec "FLUSH PRIVILEGES;"
 
-# Создание тестовой БД
+# Создание тестовой БД и таблицы cart
 mysql_exec "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
-mysql_exec "USE $DB_NAME; CREATE TABLE IF NOT EXISTS request_logs (
+mysql_exec "USE $DB_NAME; CREATE TABLE IF NOT EXISTS cart (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    request_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    product_name VARCHAR(255),
+    quantity INT,
     source_ip VARCHAR(45) NOT NULL,
-    request_url VARCHAR(255) NOT NULL,
     destination_port INT NOT NULL,
+    action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    request_time TIMESTAMP NULL,
+    request_url VARCHAR(255),
     user_agent VARCHAR(255),
     referrer VARCHAR(255)
 );"
@@ -158,33 +161,24 @@ ssh_exec "mysql -uroot $DB_NAME < /tmp/replication_dump.sql && rm /tmp/replicati
 # Настройка репликации
 echo "Настройка репликации на слейве..."
 ssh_exec "mysql -uroot -e \"STOP SLAVE;\""
-		   
 ssh_exec "mysql -uroot -e \"CHANGE MASTER TO
   MASTER_HOST='$MASTER_IP',
   MASTER_USER='$REPL_USER',
   MASTER_PASSWORD='$REPL_PASS',
   MASTER_LOG_FILE='$LOG_FILE',
   MASTER_LOG_POS=$LOG_POS;\""
-
-
 ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
-		
   echo "ОШИБКА: Не удалось запустить репликацию" >&2
   exit 1
 }
 
-# Проверка репликации
+# Проверка статуса репликации
 echo -e "\nПроверка статуса репликации..."
 SLAVE_STATUS=$(ssh_exec "mysql -uroot -e \"SHOW SLAVE STATUS\G\"")
 echo "$SLAVE_STATUS" | grep -E "Slave_IO_Running|Slave_SQL_Running|Last_Error"
 
 # Очистка
 rm -f $DUMP_FILE
-ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
-		
-  echo "ОШИБКА: Не удалось запустить репликацию" >&2
-  exit 1
-}
 
 echo -e "\n=== НАСТРОЙКА ЗАВЕРШЕНА ==="
 echo "Мастер: $MASTER_IP"
