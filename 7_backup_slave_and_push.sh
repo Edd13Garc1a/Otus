@@ -49,7 +49,7 @@ echo "4. Делаем push в репозиторий GitHub"
 execute_on_slave "rm -rf ${GIT_CLONE_DIR} && mkdir -p ${GIT_CLONE_DIR}"
 execute_on_slave "git clone ${GIT_REPO} ${GIT_CLONE_DIR}"
 execute_on_slave "cp ${ARCHIVE_FILE} ${GIT_CLONE_DIR}/"
-execute_on_slave "cd ${GIT_CLONE_DIR} && git add . && git commit -m 'Add MySQL backup ${TIMESTAMP}' && git push origin master"
+execute_on_slave "cd ${GIT_CLONE_DIR} && git add . && git commit -m 'Add MySQL backup ${TIMESTAMP}' && git push origin main"
 check_error "Не удалось выполнить push в репозиторий GitHub"
 
 echo "5. Возобновляем репликацию"
