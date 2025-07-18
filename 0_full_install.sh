@@ -1,9 +1,5 @@
 #!/bin/bash
-
-git clone https://github.com/Edd13Garc1a/Otus.git
-cd Otus
-
-# 2. Делаем скрипты исполняемыми
+# Делаем скрипты исполняемыми
 chmod +x 2_install.sh
 chmod +x 4_install_mysql.sh
 chmod +x 5_install_monitoring.sh
@@ -13,9 +9,6 @@ chmod +x 8_restore_db_master.sh
 
 echo "Запуск установки nginx, apache2."
 ./2_install.sh
-
-#echo "Запуск установки iptables"
-#./3_setup_iptables.sh
 
 # раскомментировать при аварином восстановлении
 # echo "Установка свежего бекапа"
