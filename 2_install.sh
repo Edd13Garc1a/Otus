@@ -21,14 +21,17 @@ mysql -u"$MYSQL_USER" -e "
 ALTER USER 'root'@'localhost' IDENTIFIED WITH 'caching_sha2_password' BY '$NEW_PASS';
 CREATE DATABASE IF NOT EXISTS Otus_test;
 USE Otus_test;
-CREATE TABLE IF NOT EXISTS request_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    request_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    source_ip VARCHAR(45) NOT NULL,
-    request_url VARCHAR(255) NOT NULL,
-    destination_port INT NOT NULL,
-    user_agent VARCHAR(255),
-    referrer VARCHAR(255)
+CREATE TABLE IF NOT EXISTS cart (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  product_name VARCHAR(255),
+  quantity INT,
+  source_ip VARCHAR(45) NOT NULL,
+  destination_port INT NOT NULL,
+  action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  request_time TIMESTAMP NULL,
+  request_url VARCHAR(255),
+  user_agent VARCHAR(255),
+  referrer VARCHAR(255)
 );
 "
 
@@ -53,7 +56,7 @@ for port in 8080 8081 8082; do
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Данные для подключения к MySQL (ЗАМЕНИТЕ НА СВОИ!)
+// Данные для подключения к MySQL
 \$db_host = 'localhost';
 \$db_user = 'root';
 \$db_pass = 'Testpass1$';
