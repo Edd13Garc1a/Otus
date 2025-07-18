@@ -78,11 +78,15 @@ mysql_exec "FLUSH PRIVILEGES;"
 mysql_exec "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
 mysql_exec "USE $DB_NAME; CREATE TABLE IF NOT EXISTS cart (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  product_name VARCHAR(255) NOT NULL,
-  quantity INT NOT NULL,
+  product_name VARCHAR(255),
+  quantity INT,
   source_ip VARCHAR(45) NOT NULL,
   destination_port INT NOT NULL,
-  action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  request_time TIMESTAMP NULL,
+  request_url VARCHAR(255),
+  user_agent VARCHAR(255),
+  referrer VARCHAR(255)
 );"
 
 # Получение позиции репликации
