@@ -176,7 +176,7 @@ ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
 echo -e "\nПроверка статуса репликации..."
 SLAVE_STATUS=$(ssh_exec "mysql -uroot -e \"SHOW SLAVE STATUS\G\"")
 echo "$SLAVE_STATUS" | grep -E "Slave_IO_Running|Slave_SQL_Running|Last_Error"
-
+ssh_exec "mysql -uroot -e \"START SLAVE;\""
 # Очистка
 rm -f $DUMP_FILE
 
