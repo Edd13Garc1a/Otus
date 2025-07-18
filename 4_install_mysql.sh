@@ -167,7 +167,7 @@ ssh_exec "mysql -uroot -e \"CHANGE MASTER TO
   MASTER_LOG_POS=$LOG_POS;\""
 
 echo "Ждем поднятия базы"
-sleep 2m
+sleep 30
 ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
 		
   echo "ОШИБКА: Не удалось запустить репликацию" >&2
@@ -181,6 +181,11 @@ echo "$SLAVE_STATUS" | grep -E "Slave_IO_Running|Slave_SQL_Running|Last_Error"
 
 # Очистка
 rm -f $DUMP_FILE
+ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
+		
+  echo "ОШИБКА: Не удалось запустить репликацию" >&2
+  exit 1
+}
 
 echo -e "\n=== НАСТРОЙКА ЗАВЕРШЕНА ==="
 echo "Мастер: $MASTER_IP"
