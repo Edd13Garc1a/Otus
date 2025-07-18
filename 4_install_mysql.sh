@@ -166,6 +166,8 @@ ssh_exec "mysql -uroot -e \"CHANGE MASTER TO
   MASTER_LOG_FILE='$LOG_FILE',
   MASTER_LOG_POS=$LOG_POS;\""
 
+echo "Ждем поднятия базы"
+sleep 2m
 ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
 		
   echo "ОШИБКА: Не удалось запустить репликацию" >&2
@@ -176,7 +178,7 @@ ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
 echo -e "\nПроверка статуса репликации..."
 SLAVE_STATUS=$(ssh_exec "mysql -uroot -e \"SHOW SLAVE STATUS\G\"")
 echo "$SLAVE_STATUS" | grep -E "Slave_IO_Running|Slave_SQL_Running|Last_Error"
-ssh_exec "mysql -uroot -e \"START SLAVE;\""
+
 # Очистка
 rm -f $DUMP_FILE
 
@@ -185,8 +187,3 @@ echo "Мастер: $MASTER_IP"
 echo "Слейв: $SLAVE_IP"
 echo "Пользователь репликации: $REPL_USER"
 echo "Тестовая БД: $DB_NAME"
-ssh_exec "mysql -uroot -e \"START SLAVE;\"" || {
-		
-  echo "ОШИБКА: Не удалось запустить репликацию" >&2
-  exit 1
-}
