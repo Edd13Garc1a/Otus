@@ -6,31 +6,38 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
-# Обновление системы
-#apt update && apt upgrade -y
-#apt install mc
-
 # Установка компонентов
-apt install -y nginx apache2 mysql-server php libapache2-mod-php php-mysql
+apt install -y nginx apache2 mysql-server php libapache2-mod-php php-mysql || {
+  echo "Ошибка при установке пакетов" >&2
+  exit 1
+}
+
+# Запуск MySQL
+systemctl start mysql
+systemctl status mysql || {
+  echo "MySQL не запущен" >&2
+  exit 1
+}
 
 MYSQL_USER="root"
 NEW_PASS="Testpass1$"
 
 # Выполнение SQL команд
-mysql -u"$MYSQL_USER" -e "
+mysql -u"$MYSQL_USER" -p"$NEW_PASS" -e "
 ALTER USER 'root'@'localhost' IDENTIFIED WITH 'caching_sha2_password' BY '$NEW_PASS';
 CREATE DATABASE IF NOT EXISTS Otus_test;
 USE Otus_test;
-CREATE TABLE IF NOT EXISTS request_logs (
+CREATE TABLE IF NOT EXISTS cart (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    request_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    product_name VARCHAR(255),
+    quantity INT,
     source_ip VARCHAR(45) NOT NULL,
-    request_url VARCHAR(255) NOT NULL,
     destination_port INT NOT NULL,
-    user_agent VARCHAR(255),
-    referrer VARCHAR(255)
-);
-"
+    action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);" || {
+  echo "Ошибка при выполнении SQL-команд" >&2
+  exit 1
+}
 
 # Полная очистка дефолтных конфигов
 rm -f /etc/nginx/sites-enabled/*
@@ -48,80 +55,183 @@ for port in 8080 8081 8082; do
   webroot="/var/www/port-$port"
   mkdir -p $webroot
   
-  cat > $webroot/index.php <<EOF
+  cat > $webroot/index.php <<'EOF'
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Данные для подключения к MySQL (ЗАМЕНИТЕ НА СВОИ!)
-\$db_host = 'localhost';
-\$db_user = 'root';
-\$db_pass = 'Testpass1$';
-\$db_name = 'Otus_test';
-
 // Подключение к БД
+$db_host = 'localhost';
+$db_user = 'root';
+$db_pass = 'Testpass1$';
+$db_name = 'Otus_test';
+
 try {
-    \$conn = new PDO("mysql:host=\$db_host;dbname=\$db_name", \$db_user, \$db_pass);
-    \$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException \$e) {
-    die("Ошибка подключения к MySQL: " . \$e->getMessage());
+    $conn = new PDO("mysql:host=$db_host;dbname=$db_name", $db_user, $db_pass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Ошибка подключения к MySQL: " . $e->getMessage());
 }
 
-// Запись данных в БД
-try {
-    \$source_ip = \$_SERVER['REMOTE_ADDR'];
-    \$request_url = \$_SERVER['REQUEST_URI'];
-    \$destination_port = $port; // Здесь порт вставляется из bash-переменной
-    \$user_agent = \$_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-    \$referrer = \$_SERVER['HTTP_REFER'] ?? 'None';
+// Получение IP и порта
+$source_ip = $_SERVER['REMOTE_ADDR'];
+$destination_port = $_SERVER['SERVER_PORT'];
 
-    \$sql = "INSERT INTO request_logs (source_ip, request_url, destination_port, user_agent, referrer)
-            VALUES (?, ?, ?, ?, ?)";
-    \$stmt = \$conn->prepare(\$sql);
-    \$stmt->execute([\$source_ip, \$request_url, \$destination_port, \$user_agent, \$referrer]);
+// Обработка добавления товара
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['product'], $_POST['quantity'])) {
+    $product = trim($_POST['product']);
+    $quantity = (int)$_POST['quantity'];
 
-    // Получение логов
-    \$logs = \$conn->query("SELECT * FROM request_logs ORDER BY request_time DESC LIMIT 50")->fetchAll();
-} catch (PDOException \$e) {
-    die("Ошибка SQL: " . \$e->getMessage());
+    if ($product !== '' && $quantity > 0) {
+        $stmt = $conn->prepare("INSERT INTO cart (product_name, quantity, source_ip, destination_port) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$product, $quantity, $source_ip, $destination_port]);
+    }
 }
+
+// Удаление товара
+if (isset($_GET['delete'])) {
+    $id = (int)$_GET['delete'];
+    $stmt = $conn->prepare("DELETE FROM cart WHERE id = ?");
+    $stmt->execute([$id]);
+}
+
+// Получение корзины
+$cart = $conn->query("SELECT * FROM cart ORDER BY action_time DESC")->fetchAll();
 ?>
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Port $port</title>
+    <meta charset="UTF-8">
+    <title>Корзина покупок</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f8f9fa;
+            margin: 40px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 40px;
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            width: 200px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            padding: 14px;
+            border-bottom: 1px solid #e9ecef;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f1f3f5;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .delete-link {
+            color: #dc3545;
+            text-decoration: none;
+        }
+
+        .delete-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-    <h1>Порт: $port</h1>
+<div class="container">
+    <h1>Корзина покупок</h1>
 
-    <h2>История запросов</h2>
+    <form method="post">
+        <input type="text" name="product" placeholder="Название товара" required>
+        <input type="number" name="quantity" placeholder="Количество" min="1" required>
+        <button type="submit">Добавить</button>
+    </form>
+
     <table>
         <tr>
             <th>Время</th>
+            <th>Товар</th>
+            <th>Кол-во</th>
             <th>IP</th>
             <th>Порт</th>
-            <th>User Agent</th>
-            <th>Referrer</th>
+            <th>Удалить</th>
         </tr>
-        <?php foreach (\$logs as \$log): ?>
+        <?php foreach ($cart as $item): ?>
         <tr>
-            <td><?= htmlspecialchars(\$log['request_time']) ?></td>
-            <td><?= htmlspecialchars(\$log['source_ip']) ?></td>
-            <td><?= htmlspecialchars(\$log['destination_port']) ?></td>
-            <td><?= htmlspecialchars(substr(\$log['user_agent'], 0, 30)) ?></td>
-            <td><?= htmlspecialchars(\$log['referrer']) ?></td>
+            <td><?= htmlspecialchars($item['action_time']) ?></td>
+            <td><?= htmlspecialchars($item['product_name']) ?></td>
+            <td><?= htmlspecialchars($item['quantity']) ?></td>
+            <td><?= htmlspecialchars($item['source_ip']) ?></td>
+            <td><?= htmlspecialchars($item['destination_port']) ?></td>
+            <td><a class="delete-link" href="?delete=<?= $item['id'] ?>" onclick="return confirm('Удалить товар?');">Удалить</a></td>
         </tr>
         <?php endforeach; ?>
     </table>
+</div>
 </body>
 </html>
 EOF
+
+  # Проверка создания файла
+  [ -f "$webroot/index.php" ] || {
+    echo "Ошибка: не удалось создать $webroot/index.php" >&2
+    exit 1
+  }
+
+  # Проверка синтаксиса PHP
+  php -l $webroot/index.php || {
+    echo "Ошибка синтаксиса в $webroot/index.php" >&2
+    exit 1
+  }
 
   # Конфиг виртуального хоста
   cat > /etc/apache2/sites-available/port-$port.conf <<EOF
@@ -153,7 +263,6 @@ server {
     listen 80 default_server;
     server_name _;
     
-    # Отключаем доступ к корневой директории Nginx
     location = / {
         proxy_pass http://backend;
         proxy_set_header Host $host;
@@ -161,7 +270,6 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # Обработка всех остальных запросов
     location / {
         proxy_pass http://backend;
         proxy_set_header Host $host;
@@ -169,7 +277,6 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
-    # Прямой доступ к конкретным серверам
     location ~ ^/port(8080|8081|8082)/?$ {
         proxy_pass http://127.0.0.1:$1/;
         proxy_set_header Host $host;
@@ -184,6 +291,7 @@ rm -f /etc/nginx/sites-enabled/default
 # Настройка прав
 chown -R www-data:www-data /var/www/port-*
 chmod -R 755 /var/www/port-*
+chmod 644 /var/www/port-*/index.php
 
 # Перезапуск служб
 systemctl restart apache2
