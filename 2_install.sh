@@ -191,17 +191,16 @@ systemctl restart nginx
 systemctl enable apache2 nginx mysql
 
 # Проверка
-echo "
-Настройка завершена!
+echo "Настройка завершена!
 
 Проверьте работу:
-1. Балансировка:       http://localhost/
+1. Балансировка:       http://192.168.33.245/
    (обновите несколько раз чтобы увидеть разные порты)
 
 2. Прямой доступ:
-   http://localhost/port8080
-   http://localhost/port8081
-   http://localhost/port8082
+   http://192.168.33.245:8080
+   http://192.168.33.245:8081
+   http://192.168.33.245:8082
 
 3. Проверка портов:
    netstat -tulnp | grep -E '80|8080|8081|8082'
