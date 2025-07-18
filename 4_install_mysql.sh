@@ -18,6 +18,9 @@ DB_NAME="Otus_test"
 # Проверка обязательных параметров
 if [ -z "$SLAVE_SSH_PASS" ] || [ -z "$MYSQL_ROOT_PASS" ]; then
   echo "ОШИБКА: Не заданы обязательные пароли!" >&2
+												   
+																			   
+														 
   exit 1
 fi
 
@@ -44,9 +47,11 @@ apt-get install -y sshpass
 # Проверка подключения к MySQL
 if ! mysql_exec "SELECT 1"; then
   echo "ОШИБКА: Не удалось подключиться к MySQL на мастере" >&2
+																				  
   exit 1
 fi
 
+										 
 echo "Конфигурация MySQL мастера..."
 hostnamectl set-hostname mysql-master
 cat > /etc/mysql/mysql.conf.d/replication.cnf <<EOF
@@ -62,11 +67,14 @@ systemctl restart mysql || {
   exit 1
 }
 
+										 
 echo "Настройка пользователя репликации..."
 mysql_exec "CREATE USER IF NOT EXISTS '$REPL_USER'@'$SLAVE_IP' IDENTIFIED BY '$REPL_PASS';"
 mysql_exec "GRANT REPLICATION SLAVE ON *.* TO '$REPL_USER'@'$SLAVE_IP';"
+																									   
 mysql_exec "FLUSH PRIVILEGES;"
 
+										
 mysql_exec "CREATE DATABASE IF NOT EXISTS $DB_NAME;"
 mysql_exec "USE $DB_NAME; CREATE TABLE IF NOT EXISTS request_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -78,6 +86,7 @@ mysql_exec "USE $DB_NAME; CREATE TABLE IF NOT EXISTS request_logs (
     referrer VARCHAR(255)
 );"
 
+														
 echo "Получение позиции репликации..."
 mysql_exec "FLUSH TABLES WITH READ LOCK;"
 MASTER_STATUS=$(mysql_exec "SHOW MASTER STATUS\G")
@@ -85,6 +94,7 @@ LOG_FILE=$(echo "$MASTER_STATUS" | grep "File:" | awk '{print $2}')
 LOG_POS=$(echo "$MASTER_STATUS" | grep "Position:" | awk '{print $2}')
 mysql_exec "UNLOCK TABLES;"
 
+								  
 echo "Создание дампа БД..."
 DUMP_FILE="/tmp/replication_dump.sql"
 MYSQL_PWD="$MYSQL_ROOT_PASS" mysqldump -uroot $DB_NAME > $DUMP_FILE || {
@@ -96,23 +106,28 @@ MYSQL_PWD="$MYSQL_ROOT_PASS" mysqldump -uroot $DB_NAME > $DUMP_FILE || {
 echo -e "\n=== НАСТРОЙКА СЛЕЙВА ($SLAVE_IP) ==="
 ssh_exec "hostnamectl set-hostname mysql-replica"
 
+											 
 if ! ssh_exec "echo 'SSH подключение успешно'"; then
   echo "ОШИБКА: Не удалось подключиться к слейву" >&2
+																					   
   exit 1
 fi
 
+												   
 echo "Копирование дампа на слейв..."
 sshpass -p "$SLAVE_SSH_PASS" scp -o StrictHostKeyChecking=no $DUMP_FILE root@$SLAVE_IP:/tmp/ || {
   echo "ОШИБКА: Не удалось скопировать дамп на слейв" >&2
   exit 1
 }
 
+											
 echo "Установка MySQL на слейве..."
 ssh_exec "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server" || {
   echo "ОШИБКА: Не удалось установить MySQL на слейве" >&2
   exit 1
 }
 
+									   
 echo "Конфигурация MySQL слейва..."
 sshpass -p "$SLAVE_SSH_PASS" ssh -o StrictHostKeyChecking=no root@"$SLAVE_IP" 'cat > /etc/mysql/mysql.conf.d/replication.cnf <<EOF
 [mysqld]
@@ -128,6 +143,7 @@ ssh_exec "systemctl restart mysql" || {
   exit 1
 }
 
+						 
 echo "Импорт дампа на слейв..."
 ssh_exec "mysql -uroot -e \"CREATE DATABASE IF NOT EXISTS $DB_NAME;\"" || {
   echo "ОШИБКА: Не удалось создать БД на слейве" >&2
@@ -139,6 +155,7 @@ ssh_exec "mysql -uroot $DB_NAME < /tmp/replication_dump.sql && rm /tmp/replicati
   exit 1
 }
 
+										 
 echo "Настройка репликации на слейве..."
 ssh_exec "mysql -uroot -e \"
 STOP SLAVE;
@@ -148,16 +165,19 @@ CHANGE MASTER TO
   MASTER_PASSWORD='$REPL_PASS',
   MASTER_LOG_FILE='$LOG_FILE',
   MASTER_LOG_POS=$LOG_POS;
+
 START SLAVE;
 \"" || {
   echo "ОШИБКА: Не удалось настроить репликацию на слейве" >&2
   exit 1
 }
 
+									   
 echo -e "\nПроверка статуса репликации..."
 SLAVE_STATUS=$(ssh_exec "mysql -uroot -e \"SHOW SLAVE STATUS\G\"")
 echo "$SLAVE_STATUS" | grep -E "Slave_IO_Running|Slave_SQL_Running|Last_Error"
 
+				
 rm -f $DUMP_FILE
 
 echo -e "\n=== НАСТРОЙКА ЗАВЕРШЕНА ==="
