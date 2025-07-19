@@ -113,7 +113,7 @@ echo "🔵 Проверка статуса сервисов..."
 systemctl status elasticsearch kibana filebeat --no-pager
 
 echo "✅ Установка и настройка завершены!"
-echo "🌐 Kibana доступна по адресу: http://<ваш_IP>:5601"
+echo "🌐 Kibana доступна по адресу: http://192.168.33.245:5601"
 echo "📊 Готовые дашборды для Nginx:"
 echo "  1. Откройте Kibana → Analytics → Dashboard"
 echo "  2. Найдите '[Filebeat Nginx] Access and error logs'"
