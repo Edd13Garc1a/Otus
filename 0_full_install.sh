@@ -3,7 +3,7 @@
 chmod +x 1_install.sh
 chmod +x 2_install_mysql.sh
 chmod +x 3_install_monitoring.sh
-chmod +x 4_install_elk_v3.sh
+chmod +x 4_install_elk.sh
 chmod +x 5_backup_slave_and_push.sh
 chmod +x 6_restore_db_master.sh
 
