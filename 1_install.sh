@@ -5,6 +5,7 @@ if [ "$(id -u)" -ne 0 ]; then
   echo "Запустите скрипт с правами root: sudo $0" >&2
   exit 1
 fi
+sudo apt update
 
 # Установка компонентов
 apt install -y nginx apache2 mysql-server php libapache2-mod-php php-mysql || {
