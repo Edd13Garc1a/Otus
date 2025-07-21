@@ -6,6 +6,7 @@ chmod +x 3_install_monitoring.sh
 chmod +x 4_install_elk.sh
 chmod +x 5_backup_slave_and_push.sh
 chmod +x 6_restore_db_master.sh
+chmod +x 7_cron_backup.sh
 
 echo "Запуск установки nginx, apache2."
 ./1_install.sh
@@ -22,8 +23,11 @@ echo "Запуск установки Elasticsearch, Kibana, Filebeat..."
 echo "Бекап БД и пуш в репозиторий"
 ./5_backup_slave_and_push.sh
 
- # раскомментировать при аварином восстановлении
+# раскомментировать при аварином восстановлении
 # echo "Установка свежего бекапа"
 # ./6_restore_db_master.sh
+
+echo "Настройка рассписания бекапирования Крон"
+./7_cron_backup.sh
 
 echo "Установка завершена!"
